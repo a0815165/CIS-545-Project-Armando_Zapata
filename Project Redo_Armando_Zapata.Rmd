@@ -1,0 +1,115 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(RMySQL)
+con = dbConnect(MySQL(),
+                user = "root", password = "",
+                dbname = "NCAA", host = "127.0.0.1")
+
+result = dbSendQuery(con, "SELECT * FROM KenPomHistoric")
+KenPomHistoric_2002_2018 <- fetch(result, n = -1)
+KenPomHistoric_2002_2018 <- KenPomHistoric_2002_2018[,-1]
+```
+
+```{r}
+head(KenPomHistoric_2002_2018)
+```
+
+```{r}
+summary(KenPomHistoric_2002_2018)
+```
+
+
+
+New columns
+```{r}
+KenPomHistoric_2002_2018$Offensive <- NA
+KenPomHistoric_2002_2018$Offensive[which(KenPomHistoric_2002_2018$RankAdjOE <= 50.0)] <- "Best"
+KenPomHistoric_2002_2018$Offensive[which(KenPomHistoric_2002_2018$RankAdjOE > 50 & KenPomHistoric_2002_2018$RankAdjOE <= 150)] <- "Average"
+KenPomHistoric_2002_2018$Offensive[which(KenPomHistoric_2002_2018$RankAdjOE >= 150)] <- "Bad"
+```
+
+
+
+
+```{r}
+head(KenPomHistoric_2002_2018)
+```
+
+```{r}
+basketball <- KenPomHistoric_2002_2018
+head(basketball)
+```
+
+delete some columns
+```{r}
+basketball <- basketball[,c(-2,-9,-10)]
+head(basketball)
+```
+
+
+
+classification tree
+```{r}
+library(tree)
+basketball$Offensive <- as.factor(basketball$Offensive)
+tree.model = tree(Offensive~., data = basketball)
+summary(tree.model)
+```
+
+```{r}
+plot(tree.model)
+text(tree.model, pretty = 0)
+```
+
+```{r}
+nrow(basketball)
+```
+
+training set and testing set.
+```{r}
+train = sample(1:nrow(basketball), 4000)
+test = basketball[-train,]
+test.result = basketball$Offensive[-train]
+```
+
+calculate the accuracy
+```{r}
+tree.model_1 = tree(Offensive~., data = basketball, subset = train)
+tree_pred = predict(tree.model_1, test, type = "class")
+Accuracy_tree = mean(tree_pred == test.result)
+Accuracy_tree
+```
+
+SVM
+```{r}
+library(e1071)
+
+svm.model = svm(Offensive~., data = basketball, subset = train)
+svm.model
+```
+
+Accuracy for SVM
+```{r}
+svm.pred = predict(svm.model, test)
+mean(svm.pred == test.result)
+```
+
+```{r}
+hist(basketball$Tempo, freq = T, labels = TRUE, xlab = "Tempo", ylab = "Frequency", main = "Distribution of Tempo")
+```
+
+```{r}
+library(corrplot)
+corrplot(corr=cor(basketball[,-14]))
+```
+
+pie gragh
+```{r}
+Offensive.count = table(basketball$Offensive)
+pie(Offensive.count)
+```
+
